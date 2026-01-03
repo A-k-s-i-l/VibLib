@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35919.96 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VibLib", "VibLib\VibLib.csproj", "{45BAFC2A-070E-456E-B077-7E27ACF4E477}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{45BAFC2A-070E-456E-B077-7E27ACF4E477}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45BAFC2A-070E-456E-B077-7E27ACF4E477}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45BAFC2A-070E-456E-B077-7E27ACF4E477}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45BAFC2A-070E-456E-B077-7E27ACF4E477}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1B1D86F2-C44D-4758-8997-DC40DE763354}
+	EndGlobalSection
+EndGlobal
