@@ -208,7 +208,7 @@ namespace VibLib
 		/// <summary>
 		///  How much should be instantly added to <see cref="Strength"/> on thrust in <see cref="Thrust"/>. <para/>
 		/// </summary>
-		public static float ThrustStrength = 0.115f;
+		public static float ThrustStrength = 0.155f;
 
 		/// <summary>
 		/// On how much <see cref="Strength"/> is Ellen considered overwhelmded. <para/>
