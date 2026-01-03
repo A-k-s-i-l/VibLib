@@ -8,7 +8,7 @@ namespace VibLib
 	/// <summary>
 	/// Sends UDP messages containing float values to AQEBridge on local machine.
 	/// </summary>
-	public class UdpSender
+	internal class UdpSender
 	{
 		private UdpClient udpClient;
 		private IPEndPoint endPoint;
