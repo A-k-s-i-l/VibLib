@@ -1,4 +1,7 @@
 ﻿using System;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 using UnityEngine;
 
 namespace VibLib
@@ -31,8 +34,14 @@ namespace VibLib
 			_udpSender = new UdpSender(IP, Port);
 			FadingEnabled = true;
 
+			ReloadSettings();
+
+			_congigChange = File.GetLastWriteTime("VibLib_Settings.cfg");
+
 			_instance = this;
 		}
+
+
 		#endregion
 
 		/// <summary>
@@ -40,21 +49,24 @@ namespace VibLib
 		/// Its value is clamped between 0 and <see cref="MaxStrength"/>. <para/>
 		/// If Ellen is <see cref="Overwhelmed"/>, increases in strength are amplified by <see cref="OverwhelmMultiplier"/> and <see cref="OverwhelmTimer"/> is extended by <see cref="OverwhemlmAddTime"/>.
 		/// </summary>
-		public float Strength { 
+		public float Strength
+		{
 			get => _strength;
-			set {
-					
+			set
+			{
 
-				if (Overwhelmed&& Clamp(value, 0, MaxStrength)>_strength)
+
+				if (Overwhelmed && Clamp(value, 0, MaxStrength) > _strength)
 				{
-					OverwhelmTimer+= OverwhemlmAddTime; 
+					OverwhelmTimer += OverwhemlmAddTime;
 					value *= OverwhelmMultiplier;
 				}
-				
 
-				_strength = Clamp(value, 0, MaxStrength); 
-				
-			} }
+
+				_strength = Clamp(value, 0, MaxStrength);
+
+			}
+		}
 		/// <summary>
 		/// If true, the strength will fade over time at a rate of <see cref="StrengthFalloff"/> per second. If Ellen is <see cref="Overwhelmed"/>, the strength will fade at a rate of <see cref="OverwhelmFalloff"/> per second.
 		/// </summary>
@@ -66,25 +78,33 @@ namespace VibLib
 		/// <summary>
 		/// Time remaining for which Ellen is considered <see cref="Overwhelmed"/>. <para/>
 		/// </summary>
-		public float OverwhelmTimer { get=>_overwhelmTimer; 
-			set {
-				_overwhelmTimer = value; 
-				if (_overwhelmTimer < 0) _overwhelmTimer = 0; 
-			} }
-		
+		public float OverwhelmTimer
+		{
+			get => _overwhelmTimer;
+			set
+			{
+				_overwhelmTimer = value;
+				if (_overwhelmTimer < 0) _overwhelmTimer = 0;
+			}
+		}
+
 		private float _overwhelmTimer;
 		private float _strength;
 		private UdpSender _udpSender;
+		private DateTime _congigChange;
 
 		/// <summary>
 		/// Call this method every frame to update the controller state and send the current strength via UDP.
 		/// </summary>
 		public void Update()
 		{
+			if(AutoReloadSettings)
+				WatchConfigFile();
+
 			if (OverwhelmTimer > 0)
 				OverwhelmTimer -= Time.deltaTime;
 
-			if (Strength >= OverwhelmThreshold&&!Overwhelmed)
+			if (Strength >= OverwhelmThreshold && !Overwhelmed)
 			{
 				Overwhelm();
 			}
@@ -92,7 +112,7 @@ namespace VibLib
 
 			if (FadingEnabled)
 			{
-				Strength -= (Overwhelmed?OverwhelmFalloff:StrengthFalloff) *  Time.deltaTime;
+				Strength -= (Overwhelmed ? OverwhelmFalloff : StrengthFalloff) * Time.deltaTime;
 			}
 
 
@@ -106,7 +126,7 @@ namespace VibLib
 		{
 			if (OverwhelmTimer < OverwhelmDuration)
 				OverwhelmTimer += OverwhelmDuration;
-			
+
 		}
 
 		/// <summary>
@@ -132,13 +152,33 @@ namespace VibLib
 		/// On Ellens orgasm (idk its up to you when), apply <see cref="Overwhelm"/> and add <see cref="EllenOrgasmStrength"/> to <see cref="Strength"/>. <para/>
 		/// But this is just a example implementation.<para/>
 		/// </summary>
-		public void Orgasm() 
+		public void Orgasm()
 		{
 			Strength += EllenOrgasmStrength;
-			Overwhelm();			
+			Overwhelm();
 		}
 
+
+		private void WatchConfigFile() 
+		{
+			if (!File.Exists("VibLib_Settings.cfg"))
+			{
+				SaveValues();
+
+				_congigChange = File.GetLastWriteTime("VibLib_Settings.cfg");
+			}
+
+			if (File.GetLastWriteTime("VibLib_Settings.cfg") == _congigChange)
+				return;
+
+			ReloadSettings();
+			_congigChange = File.GetLastWriteTime("VibLib_Settings.cfg");
+		}
+
+
 		#region Settings
+
+		private static int _settingsVersion = 1;
 
 		// Modifyable unified settings, can be changed in runtime for specific use cases.
 
@@ -193,8 +233,118 @@ namespace VibLib
 
 		public static string IP = "127.0.0.1";
 		public static int Port = 54321;
+
+		public static bool AutoReloadSettings = true;
+
+		
 		#endregion
 
-		private float Clamp(float value, float min, float max) => Math.Max(Math.Min(value, max), min);
+		private static float Clamp(float value, float min, float max) => Math.Max(Math.Min(value, max), min);
+
+		private static void LoadValues()
+		{
+			bool updateSettings = false;
+			bool versionChecked = false;
+
+			var fields = typeof(Controller).FindMembers(System.Reflection.MemberTypes.Field, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static, null, null)
+			.OfType<FieldInfo>();
+
+
+			var lines = File.ReadAllLines("VibLib_Settings.cfg");
+			foreach (var line in lines)
+			{
+				if (line.StartsWith("#")) continue;
+
+				var parts = line.Split('=');
+				if (parts.Length != 2) continue;
+				var fieldName = parts[0].Trim();
+				var fieldValue = parts[1].Trim();
+
+				var field = fields.FirstOrDefault(f => f.Name == fieldName);
+
+				if (field == null)
+					continue;
+
+				if(field.Name == "_settingsVersion")
+				{
+					int fileVersion = 0;
+					try
+					{
+						fileVersion = int.Parse(fieldValue);
+					}
+					catch
+					{
+						Debug.LogWarning("Failed to parse settings version from config file.");
+					}
+
+					versionChecked = true;
+
+					if (fileVersion != _settingsVersion)
+					{
+						updateSettings = true;
+						Debug.LogWarning($"Settings version mismatch. File version: {fileVersion}, Expected version: {_settingsVersion}. Updating your config file.");
+					}
+					continue;
+				}
+
+				try
+				{
+					if (field.FieldType == typeof(float))
+					{
+						field.SetValue(null, float.Parse(fieldValue));
+					}
+					else if (field.FieldType == typeof(int))
+					{
+						field.SetValue(null, int.Parse(fieldValue));
+					}
+					else if (field.FieldType == typeof(string))
+					{
+						field.SetValue(null, fieldValue);
+					}
+					else if (field.FieldType == typeof(bool))
+					{
+						field.SetValue(null, bool.Parse(fieldValue));
+					}
+				}
+				catch (Exception ex)
+				{
+					Debug.LogWarning($"Failed to parse value for field {fieldName}: {ex.Message}");
+				}
+			}
+
+			if (updateSettings||!versionChecked)
+			{
+				SaveValues();
+			}
+		}
+
+		private static void SaveValues()
+		{
+			var fields = typeof(Controller).FindMembers(System.Reflection.MemberTypes.Field, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static, null, null)
+			.OfType<FieldInfo>();
+
+			using (var writer = new StreamWriter("VibLib_Settings.cfg"))
+			{
+				writer.WriteLine("# VibLib Settings Configuration File");
+				foreach (var field in fields)
+				{
+					var value = field.GetValue(null);
+					writer.WriteLine($"{field.Name}={value}");
+				}
+			}
+		}
+
+		public static void ReloadSettings()
+		{
+
+			if (File.Exists("VibLib_Settings.cfg"))
+			{
+				LoadValues();
+			}
+			else
+			{
+				SaveValues();
+			}
+		}
 	}
 }
